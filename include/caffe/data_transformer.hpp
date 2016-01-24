@@ -38,6 +38,21 @@ class DataTransformer {
   void Transform(const Datum& datum, Blob<Dtype>* transformed_blob);
 
   /**
+   * @brief Applies the transformation defined in the ImageSegUniformSizeDataLayer layer's
+   * transform_param block to the data.
+   *
+   * @param datum
+   *    Datum containing the data to be transformed.
+   * @param transformed_image
+   *    This is destination blob for image. It can be part of top blob's data if
+   *    set_cpu_data() is used. See data_layer.cpp for an example.
+   * @param transformed_label
+   *    This is destination blob for pixelwise label
+   */
+  void TransformImageAndDenseLabel(const Datum& datum, Blob<Dtype>* transformed_image,
+      Blob<Dtype>* transformed_label);
+
+  /**
    * @brief Applies the transformation defined in the data layer's
    * transform_param block to a vector of Datum.
    *
@@ -75,6 +90,21 @@ class DataTransformer {
    *    set_cpu_data() is used. See image_data_layer.cpp for an example.
    */
   void Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob);
+
+  /**
+   * @brief Applies the transformation defined in the data layer's
+   * transform_param block to a cv::Mat
+   *
+   * @param cv_img
+   *    cv::Mat containing the data to be transformed.
+   * @param transformed_image
+   *    This is destination blob for image. It can be part of top blob's data if
+   *    set_cpu_data() is used. See data_layer.cpp for an example.
+   * @param transformed_label
+   *    This is destination blob for pixelwise label
+   */
+  void TransformImageAndDenseLabel(const Datum& datum, const cv::Mat& cv_img,
+      Blob<Dtype>* transformed_image, Blob<Dtype>* transformed_label);
 #endif  // USE_OPENCV
 
   /**

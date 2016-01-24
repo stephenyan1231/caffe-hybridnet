@@ -38,6 +38,10 @@ message Datum {
   repeated float float_data = 6;
   // If true data contains an encoded image that need to be decoded
   optional bool encoded = 7 [default = false];
+  // Useful for multiple labels.
+  repeated int32 labels = 8 [packed = true];  
+  // Useful for regresion.
+  repeated float values = 9 [packed = true];  
 }
 
 message FillerParameter {
@@ -416,6 +420,9 @@ message TransformationParameter {
   optional bool force_color = 6 [default = false];
   // Force the decoded image to have 1 color channels.
   optional bool force_gray = 7 [default = false];
+  // Specify the cropping height and width (cannot be specified when crop_size is given)
+  optional uint32 crop_height = 8 [default = 0];
+  optional uint32 crop_width = 9 [default = 0];
 }
 
 // Message that stores parameters shared by loss layers
