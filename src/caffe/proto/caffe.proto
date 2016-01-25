@@ -310,7 +310,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 141 (last added: bilinear_interpolation_param)
+// LayerParameter next available layer-specific ID: 143 (last added: normalize_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -382,6 +382,7 @@ message LayerParameter {
   optional LRNParameter lrn_param = 118;
   optional MemoryDataParameter memory_data_param = 119;
   optional MVNParameter mvn_param = 120;
+  optional NormalizeParameter normalize_param = 142;
   optional PoolingParameter pooling_param = 121;
   optional PowerParameter power_param = 122;
   optional PReLUParameter prelu_param = 131;
@@ -813,6 +814,11 @@ message MVNParameter {
 
   // Epsilon for not dividing by zero while normalizing variance
   optional float eps = 3 [default = 1e-9];
+}
+
+message NormalizeParameter {
+  // a uniform scaling factor after L2 normalization
+  optional float uniform_scaling = 1 [default = 1.0];
 }
 
 message PoolingParameter {
