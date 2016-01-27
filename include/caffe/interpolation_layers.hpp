@@ -11,6 +11,9 @@ namespace caffe {
 /**
  * @brief Bilinear upsample the input blob of shape
  * (number, channels, height, width)
+ * The target resolution can be determined by
+ * 1) specifying an integer 'interpolation_factor_'
+ * 2) providing a 2nd input blob, whose height/width are used as target resolution
  */
 template <typename Dtype>
 class BilinearInterpolationLayer : public Layer<Dtype> {

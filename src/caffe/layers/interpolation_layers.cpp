@@ -24,13 +24,13 @@ void BilinearInterpolationLayer<Dtype>::Reshape(
     topShape[3] = bottom[0]->shape(3) * interpolation_factor_;
   } else {
     CHECK_EQ(interpolation_factor_, 1);
-    const Dtype *top_blob_size = bottom[1]->cpu_data();
+    const int target_height = bottom[1]->height();
+    const int target_width = bottom[1]->width();
     // set height/width to 1 if they are not initialized in the bottom blob 1
     // This usually happens in Caffe python wrapper
-    topShape[2] = top_blob_size[0] > 0 ? ceil(top_blob_size[0] * target_size_factor_): 1;
-    topShape[3] = top_blob_size[1] > 0 ? ceil(top_blob_size[1] * target_size_factor_): 1;
+    topShape[2] = target_height > 0 ? ceil(target_height * target_size_factor_): 1;
+    topShape[3] = target_width > 0 ? ceil(target_width * target_size_factor_): 1;
   }
-
   top[0]->Reshape(topShape);
 }
 
