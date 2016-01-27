@@ -33,7 +33,7 @@ class ImageSegUniformSizeDataLayer : public BasePrefetchingDataLayer<Dtype> {
   virtual inline const char* type() const { return "ImageSegUniformSizeData"; }
   virtual inline int ExactNumBottomBlobs() const { return 0; }
   virtual inline int MinTopBlobs() const { return 1; }
-  virtual inline int MaxTopBlobs() const { return 3; }
+  virtual inline int MaxTopBlobs() const { return 2; }
  protected:
   virtual void load_batch(Batch<Dtype>* batch);
 

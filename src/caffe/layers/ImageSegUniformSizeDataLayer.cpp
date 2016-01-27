@@ -63,14 +63,14 @@ void ImageSegUniformSizeDataLayer<Dtype>::DataLayerSetUp(
       this->prefetch_[i].label_.Reshape(top_label_shape);
     }
   }
-  if (top.size() == 3) {
-    vector<int> top_image_size_shape(1);
-    top_image_size_shape[0] = 2;
-    top[2]->Reshape(top_image_size_shape);
-    Dtype *top_image_size_data = top[2]->mutable_cpu_data();
-    top_image_size_data[0] = top_image_shape[2];
-    top_image_size_data[1] = top_image_shape[3];
-  }
+//  if (top.size() == 3) {
+//    vector<int> top_image_size_shape(1);
+//    top_image_size_shape[0] = 2;
+//    top[2]->Reshape(top_image_size_shape);
+//    Dtype *top_image_size_data = top[2]->mutable_cpu_data();
+//    top_image_size_data[0] = top_image_shape[2];
+//    top_image_size_data[1] = top_image_shape[3];
+//  }
 }
 
 // This function is called on prefetch thread
