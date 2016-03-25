@@ -1,5 +1,3 @@
-#define USE_OPENCV
-
 #ifdef USE_OPENCV
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -749,8 +747,7 @@ void DataTransformer<Dtype>::TransformImageAndDenseLabel(
   CHECK(cv_cropped_label.data);
 
   Dtype* transformed_image_data = transformed_image->mutable_cpu_data();
-  Dtype* transformed_label_data =
-      transformed_label_data = transformed_label->mutable_cpu_data();
+  Dtype* transformed_label_data = transformed_label->mutable_cpu_data();
 
   int top_index, top_label_index;
   for (int h = 0; h < height; ++h) {

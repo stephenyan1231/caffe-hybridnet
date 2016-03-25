@@ -17,7 +17,7 @@ void DenseCRFMeanfieldLayer<Dtype>::LayerSetUp(
   const caffe::DenseCRFMeanfieldParameter meanfield_param =
       this->layer_param_.dense_crf_meanfield_param();
   num_iterations_ = meanfield_param.num_iterations();
-//  CHECK_GT(num_iterations_, 1)<< "Number of iterations must be greater than 1.";
+  CHECK_GT(num_iterations_, 1)<< "Number of iterations must be greater than 1.";
   theta_alpha_ = meanfield_param.theta_alpha();
   theta_beta_ = meanfield_param.theta_beta();
   theta_gamma_ = meanfield_param.theta_gamma();
@@ -185,10 +185,6 @@ void DenseCRFMeanfieldLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 template<typename Dtype>
 void DenseCRFMeanfieldLayer<Dtype>::Forward_cpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-
-//  split_layer_bottom_vec_[0] = bottom[0];
-//  split_layer_->Forward(split_layer_bottom_vec_, split_layer_top_vec_);
-
   // Initialize the bilateral lattices.
   bilateral_lattices_.resize(num_);
   for (int n = 0; n < num_; ++n) {
@@ -245,27 +241,27 @@ void DenseCRFMeanfieldLayer<Dtype>::Forward_cpu(
     caffe_cpu_axpby<Dtype>(num_ * num_pixels_ * channels_, this->blobs_[0]->cpu_data()[0],
         spatial_out_blobs_[i]->cpu_data(), 0.,
         message_passings_[i]->mutable_cpu_data());
-    for (int n = 0; n < num_; ++n) {
+//    for (int n = 0; n < num_; ++n) {
 //      caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, channels_, num_pixels_,
 //          channels_, (Dtype) 1., this->blobs_[0]->cpu_data(),
 //          spatial_out_blobs_[i]->cpu_data() + spatial_out_blobs_[i]->offset(n),
 //          (Dtype) 0.,
 //          message_passings_[i]->mutable_cpu_data()
 //              + message_passings_[i]->offset(n));
-    }
+//    }
 
     // for bilateral kernel, give a different weight to each label
     caffe_cpu_axpby<Dtype>(num_ * num_pixels_ * channels_, this->blobs_[1]->cpu_data()[0],
          bilateral_out_blobs_[i]->cpu_data(), 1.,
          message_passings_[i]->mutable_cpu_data());
-    for (int n = 0; n < num_; ++n) {
+//    for (int n = 0; n < num_; ++n) {
 //      caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, channels_, num_pixels_,
 //          channels_, (Dtype) 1., this->blobs_[1]->cpu_data(),
 //          bilateral_out_blobs_[i]->cpu_data()
 //              + bilateral_out_blobs_[i]->offset(n), (Dtype) 1.,
 //          message_passings_[i]->mutable_cpu_data()
 //              + message_passings_[i]->offset(n));
-    }
+//    }
 
     //--------------------------- Compatibility multiplication ----------------
     //Result from message passing needs to be multiplied with compatibility values.
@@ -347,29 +343,28 @@ void DenseCRFMeanfieldLayer<Dtype>::Backward_cpu(
     bilateral_filter_weight_diff[0] += caffe_cpu_dot<Dtype>(num_ * num_pixels_ * channels_,
         message_passings_[i]->cpu_diff(),
         bilateral_out_blobs_[i]->cpu_data());
-    for (int n = 0; n < num_; ++n) {
+//    for (int n = 0; n < num_; ++n) {
 //      caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasTrans, channels_, channels_,
 //          num_pixels_, (Dtype) 1.,
 //          message_passings_[i]->cpu_diff() + message_passings_[i]->offset(n),
 //          bilateral_out_blobs_[i]->cpu_data()
 //              + bilateral_out_blobs_[i]->offset(n), (Dtype) 1.,
 //          this->blobs_[1]->mutable_cpu_diff());
-    }
+//    }
 
     // Gradient w.r.t spatial and bilateral output blob
     caffe_cpu_axpby<Dtype>(num_ * num_pixels_ * channels_, this->blobs_[0]->cpu_data()[0],
         message_passings_[i]->cpu_diff(),
         0., spatial_out_blobs_[i]->mutable_cpu_diff());
-    for (int n = 0; n < num_; ++n) {
+//    for (int n = 0; n < num_; ++n) {
 //      caffe_cpu_gemm<Dtype>(CblasTrans, CblasNoTrans, channels_, num_pixels_,
 //          channels_, (Dtype) 1., this->blobs_[0]->cpu_data(),
 //          message_passings_[i]->cpu_diff() + message_passings_[i]->offset(n),
 //          (Dtype) 0.,
 //          spatial_out_blobs_[i]->mutable_cpu_diff()
 //              + spatial_out_blobs_[i]->offset(n));
-    }
+//    }
 
-//    Dtype bilateral_filter_weight = 1.0 - this->blobs_[0]->cpu_data()[0];
     caffe_cpu_axpby<Dtype>(num_* num_pixels_*channels_, this->blobs_[1]->cpu_data()[0],
         message_passings_[i]->cpu_diff(),
         0.,bilateral_out_blobs_[i]->mutable_cpu_diff());

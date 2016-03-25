@@ -45,8 +45,6 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>
   Dtype temp_loss_pos = 0, temp_loss_neg = 0;
   int count_pos = 0, count_neg = 0;
 
-  Dtype mean_abs = bottom[0]->asum_data() / count;
-
   for (int i = 0; i < num; ++i) {
     count_pos = 0;
     count_neg = 0;

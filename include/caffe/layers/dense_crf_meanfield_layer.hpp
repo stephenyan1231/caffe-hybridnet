@@ -14,6 +14,9 @@
 
 namespace caffe {
 
+/* This is an optimized implementation of CRF-RNN layer
+ * CRF-RNN paper: Conditional Random Fields as Recurrent Neural Networks. IEEE ICCV 2015.
+ * */
 template<typename Dtype>
 class DenseCRFMeanfieldLayer: public Layer<Dtype> {
 
@@ -66,14 +69,7 @@ protected:
   Dtype spatial_filter_weight_;
   int num_iterations_;
 
-
-
-//  vector<Blob<Dtype>*> split_layer_bottom_vec_;
-//  vector<Blob<Dtype>*> split_layer_top_vec_;
-//  vector<shared_ptr<Blob<Dtype> > > split_layer_out_blobs_;
   vector<shared_ptr<Blob<Dtype> > > iteration_output_blobs_;
-
-//  shared_ptr<SplitLayer<Dtype> > split_layer_;
 
   vector<shared_ptr<SoftmaxLayer<Dtype> > > softmax_layers_;
   vector<vector<Blob<Dtype>*> > softmax_bottom_vec_vec_;
