@@ -310,7 +310,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 144 (last added: renet_lstm_param)
+// LayerParameter next available layer-specific ID: 148 (last added: local_crf_relaxed_solver_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -365,6 +365,8 @@ message LayerParameter {
   optional ContrastiveLossParameter contrastive_loss_param = 105;
   optional ConvolutionParameter convolution_param = 106;
   optional DataParameter data_param = 107;
+  optional DenseCRFMeanfieldParameter dense_crf_meanfield_param = 145;  
+  optional DenseCRFParameter dense_crf_param = 144;
   optional DropoutParameter dropout_param = 108;
   optional DummyDataParameter dummy_data_param = 109;
   optional EltwiseParameter eltwise_param = 110;
@@ -372,6 +374,7 @@ message LayerParameter {
   optional EmbedParameter embed_param = 137;
   optional ExpParameter exp_param = 111;
   optional FlattenParameter flatten_param = 135;
+  optional GridLSTM3Parameter grid_lstm_3_param = 146;
   optional HDF5DataParameter hdf5_data_param = 112;
   optional HDF5OutputParameter hdf5_output_param = 113;
   optional HingeLossParameter hinge_loss_param = 114;
@@ -379,6 +382,7 @@ message LayerParameter {
   optional InfogainLossParameter infogain_loss_param = 116;
   optional InnerProductParameter inner_product_param = 117;
   optional LogParameter log_param = 134;
+  optional LocalCRFRelaxedSolverParameter local_crf_relaxed_solver_param = 147;
   optional LRNParameter lrn_param = 118;
   optional MemoryDataParameter memory_data_param = 119;
   optional MVNParameter mvn_param = 120;
@@ -412,6 +416,7 @@ message TransformationParameter {
   optional bool mirror = 2 [default = false];
   // Specify if we would like to randomly crop an image.
   optional uint32 crop_size = 3 [default = 0];
+  optional uint32 crop_size_random_min = 10 [default = 0];
   // mean_file and mean_value cannot be specified at the same time
   optional string mean_file = 4;
   // if specified can be repeated once (would substract it from all the channels)
@@ -425,6 +430,8 @@ message TransformationParameter {
   // Specify the cropping height and width (cannot be specified when crop_size is given)
   optional uint32 crop_height = 8 [default = 0];
   optional uint32 crop_width = 9 [default = 0];
+  optional uint32 crop_height_random_min = 11 [default = 0];
+  optional uint32 crop_width_random_min = 12 [default = 0];  
 }
 
 // Message that stores parameters shared by loss layers
@@ -611,6 +618,40 @@ message DataParameter {
   // Prefetch queue (Number of batches to prefetch to host memory, increase if
   // data access bandwidth varies).
   optional uint32 prefetch = 10 [default = 4];
+  repeated float multi_scale = 11;
+}
+
+// Message that stores parameters used by DenseCRFMeanfieldLayer
+message DenseCRFMeanfieldParameter {
+  enum Mode {
+    POTTS = 0;
+  }
+  optional Mode compatibility_mode = 1 [default = POTTS];
+  optional float threshold = 2;
+  
+  required float theta_alpha = 3 [default = 10.];
+  required float theta_beta = 4 [default = 10.];
+  required float theta_gamma = 5 [default = 10.];
+  
+  required uint32 num_iterations = 6 [default = 2];
+  optional float spatial_filter_weight = 7 [default = 3];
+  optional float bilateral_filter_weight = 8 [default = 5];
+  
+  optional float forced_spatial_filter_weight = 9;
+  optional float forced_bilateral_filter_weight = 10;
+}
+
+// Message that stores parameters used by DenseCRFLayer
+message DenseCRFParameter {
+  // max number of iteration for message passing
+  optional int32 max_iter = 1 [default = 10];
+  // positional std and weight for "Positional" filter (color-independent)
+  repeated float pos_xy_std = 2;
+  repeated float pos_w = 3;
+  // positional std, color std and weight for Bilateral filter
+  repeated float bi_xy_std = 4;
+  repeated float bi_rgb_std = 5;
+  repeated float bi_w = 6; 
 }
 
 message DropoutParameter {
@@ -692,6 +733,22 @@ message FlattenParameter {
   // May be negative to index from the end (e.g., the default -1 for the last
   // axis).
   optional int32 end_axis = 2 [default = -1];
+}
+
+// Message that stores parameters used by GridLSTM3Layer
+message GridLSTM3Parameter {
+  optional uint32 num_output = 1 [default = 1];
+  optional uint32 depth = 2 [default = 1];
+  // The filler for the general weights
+  optional FillerParameter general_weight_filler = 3;
+  // The filler for the cell input bias
+  optional FillerParameter cell_input_bias_filler = 4;
+  // The filler for the forget gate bias
+  optional FillerParameter forget_gate_bias_filler = 5;
+  // The filler for the input gate bias
+  optional FillerParameter input_gate_bias_filler = 6;
+  // The filler for the output gate bias
+  optional FillerParameter output_gate_bias_filler = 7;  
 }
 
 // Message that stores parameters used by HDF5DataLayer
@@ -778,6 +835,22 @@ message LogParameter {
   optional float base = 1 [default = -1.0];
   optional float scale = 2 [default = 1.0];
   optional float shift = 3 [default = 0.0];
+}
+
+// Message that stores parameters used by LocalCRFRelaxedSolverLayer
+message LocalCRFRelaxedSolverParameter {
+  optional float mu = 1 [default = 0.025];
+  optional float sigma_alpha = 2 [default = 80.0];
+  optional float sigma_beta = 3 [default = 3.0];
+  optional float sigma_gamma = 4 [default = 3.0];
+  optional float sigma_theta = 11 [default = 0.5];
+  optional uint32 neighbor_half_steps = 5 [default = 1];
+  optional uint32 step_stride = 6 [default = 1];
+  optional float bilateral_kernel_weight = 7 [default = 0.6];
+  optional float spatial_kernel_weight = 8 [default = 0.4];
+  optional float semantic_boundary_weight = 12 [default = 0.5];
+  optional float pcg_tolerance = 10 [default = 0.1];
+  optional float sample_percentage = 13 [default = 0.2];
 }
 
 // Message that stores parameters used by LRNLayer

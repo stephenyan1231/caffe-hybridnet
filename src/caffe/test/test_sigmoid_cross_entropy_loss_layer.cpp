@@ -19,8 +19,8 @@ class SigmoidCrossEntropyLossLayerTest : public MultiDeviceTest<TypeParam> {
 
  protected:
   SigmoidCrossEntropyLossLayerTest()
-      : blob_bottom_data_(new Blob<Dtype>(10, 5, 1, 1)),
-        blob_bottom_targets_(new Blob<Dtype>(10, 5, 1, 1)),
+      : blob_bottom_data_(new Blob<Dtype>(10, 5, 4, 4)),
+        blob_bottom_targets_(new Blob<Dtype>(10, 5, 4, 4)),
         blob_top_loss_(new Blob<Dtype>()) {
     // Fill the data vector
     FillerParameter data_filler_param;
@@ -30,9 +30,11 @@ class SigmoidCrossEntropyLossLayerTest : public MultiDeviceTest<TypeParam> {
     blob_bottom_vec_.push_back(blob_bottom_data_);
     // Fill the targets vector
     FillerParameter targets_filler_param;
-    targets_filler_param.set_min(0);
-    targets_filler_param.set_max(1);
-    UniformFiller<Dtype> targets_filler(targets_filler_param);
+//    targets_filler_param.set_min(0);
+//    targets_filler_param.set_max(1);
+//    UniformFiller<Dtype> targets_filler(targets_filler_param);
+    targets_filler_param.set_value(0);
+    ConstantFiller<Dtype> targets_filler(targets_filler_param);
     targets_filler.Fill(blob_bottom_targets_);
     blob_bottom_vec_.push_back(blob_bottom_targets_);
     blob_top_vec_.push_back(blob_top_loss_);
@@ -100,9 +102,9 @@ class SigmoidCrossEntropyLossLayerTest : public MultiDeviceTest<TypeParam> {
 
 TYPED_TEST_CASE(SigmoidCrossEntropyLossLayerTest, TestDtypesAndDevices);
 
-TYPED_TEST(SigmoidCrossEntropyLossLayerTest, TestSigmoidCrossEntropyLoss) {
-  this->TestForward();
-}
+//TYPED_TEST(SigmoidCrossEntropyLossLayerTest, TestSigmoidCrossEntropyLoss) {
+//  this->TestForward();
+//}
 
 TYPED_TEST(SigmoidCrossEntropyLossLayerTest, TestGradient) {
   typedef typename TypeParam::Dtype Dtype;

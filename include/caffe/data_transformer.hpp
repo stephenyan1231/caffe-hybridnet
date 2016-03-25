@@ -49,7 +49,21 @@ class DataTransformer {
    * @param transformed_label
    *    This is destination blob for pixelwise label
    */
-  void TransformImageAndDenseLabel(const Datum& datum, Blob<Dtype>* transformed_image,
+  void TransformImageAndDenseLabel(const Datum& datum, Blob<Dtype> *transformed_image,
+      Blob<Dtype>* transformed_label);
+  /**
+   * @brief Applies the transformation defined in the ImageSegUniformSizeDataLayer layer's
+   * transform_param block to the data.
+   *
+   * @param datum
+   *    Datum containing the data to be transformed.
+   * @param transformed_image
+   *    This is destination blob for image. It can be part of top blob's data if
+   *    set_cpu_data() is used. See data_layer.cpp for an example.
+   * @param transformed_label
+   *    This is destination blob for pixelwise label
+   */
+  void TransformImageAndDenseLabel(const Datum& datum, vector<shared_ptr<Blob<Dtype> > > &transformed_image,
       Blob<Dtype>* transformed_label);
 
   /**
@@ -105,6 +119,40 @@ class DataTransformer {
    */
   void TransformImageAndDenseLabel(const Datum& datum, const cv::Mat& cv_img,
       Blob<Dtype>* transformed_image, Blob<Dtype>* transformed_label);
+
+  /**
+   * @brief Applies the transformation defined in the data layer's
+   * transform_param block to a cv::Mat
+   * This is a multiscale version
+   *
+   * @param cv_img
+   *    cv::Mat containing the data to be transformed.
+   * @param transformed_image
+   *    This is destination blob for image. It can be part of top blob's data if
+   *    set_cpu_data() is used. See data_layer.cpp for an example.
+   * @param transformed_label
+   *    This is destination blob for pixelwise label
+   */
+  void TransformImageAndDenseLabel(const Datum& datum, const cv::Mat& cv_img,
+      vector<shared_ptr<Blob<Dtype> > > &transformed_image, Blob<Dtype>* transformed_label);
+
+  /**
+   * @brief Applies the transformation defined in the data layer's
+   * transform_param block to a cv::Mat
+   *
+   * @param cv_img_data
+   *    cv::Mat containing the pixel data to be transformed.
+   * @param cv_img_label
+   *    cv::Mat containing the pixel label to be transformed.
+   * @param transformed_image
+   *    This is destination blob for image. It can be part of top blob's data if
+   *    set_cpu_data() is used. See data_layer.cpp for an example.
+   * @param transformed_label
+   *    This is destination blob for pixelwise label
+   */
+  void TransformImageAndDenseLabel(const cv::Mat& cv_img_data, const cv::Mat& cv_img_label,
+      Blob<Dtype>* transformed_image, Blob<Dtype>* transformed_label);
+
 #endif  // USE_OPENCV
 
   /**

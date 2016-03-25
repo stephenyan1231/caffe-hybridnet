@@ -807,34 +807,38 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
   for (int i = 0; i < num_source_layers; ++i) {
     const LayerParameter& source_layer = param.layer(i);
     const string& source_layer_name = source_layer.name();
-    int target_layer_id = 0;
-    while (target_layer_id != layer_names_.size() &&
-        layer_names_[target_layer_id] != source_layer_name) {
-      ++target_layer_id;
-    }
-    if (target_layer_id == layer_names_.size()) {
-      LOG(INFO) << "Ignoring source layer " << source_layer_name;
-      continue;
-    }
-    DLOG(INFO) << "Copying source layer " << source_layer_name;
-    vector<shared_ptr<Blob<Dtype> > >& target_blobs =
-        layers_[target_layer_id]->blobs();
-    CHECK_EQ(target_blobs.size(), source_layer.blobs_size())
-        << "Incompatible number of blobs for layer " << source_layer_name;
-    for (int j = 0; j < target_blobs.size(); ++j) {
-      if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {
-        Blob<Dtype> source_blob;
-        const bool kReshape = true;
-        source_blob.FromProto(source_layer.blobs(j), kReshape);
-        LOG(FATAL) << "Cannot copy param " << j << " weights from layer '"
-            << source_layer_name << "'; shape mismatch.  Source param shape is "
-            << source_blob.shape_string() << "; target param shape is "
-            << target_blobs[j]->shape_string() << ". "
-            << "To learn this layer's parameters from scratch rather than "
-            << "copying from a saved net, rename the layer.";
+    // allow one source layer to be copied by multiple target layers
+    vector<int> target_layer_ids;
+    for (int l = 0; l < layer_names_.size(); ++l) {
+      if (layer_names_[l] == source_layer_name) {
+        target_layer_ids.push_back(l);
       }
-      const bool kReshape = false;
-      target_blobs[j]->FromProto(source_layer.blobs(j), kReshape);
+    }
+    int target_layer_id = 0;
+    for (int l = 0; l < target_layer_ids.size(); ++l) {
+      target_layer_id = target_layer_ids[l];
+      vector<shared_ptr<Blob<Dtype> > >& target_blobs =
+          layers_[target_layer_id]->blobs();
+      if (target_blobs.size() != source_layer.blobs_size()) {
+        continue;
+      }
+//      CHECK_EQ(target_blobs.size(), source_layer.blobs_size())
+//          << "Incompatible number of blobs for layer " << source_layer_name;
+      for (int j = 0; j < target_blobs.size(); ++j) {
+        if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {
+          Blob<Dtype> source_blob;
+          const bool kReshape = true;
+          source_blob.FromProto(source_layer.blobs(j), kReshape);
+          LOG(FATAL) << "Cannot copy param " << j << " weights from layer '"
+              << source_layer_name << "'; shape mismatch.  Source param shape is "
+              << source_blob.shape_string() << "; target param shape is "
+              << target_blobs[j]->shape_string() << ". "
+              << "To learn this layer's parameters from scratch rather than "
+              << "copying from a saved net, rename the layer.";
+        }
+        const bool kReshape = false;
+        target_blobs[j]->FromProto(source_layer.blobs(j), kReshape);
+      }
     }
   }
 }

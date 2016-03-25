@@ -1,5 +1,8 @@
+#define USE_OPENCV
+
 #ifdef USE_OPENCV
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #endif  // USE_OPENCV
 
 #include <string>
@@ -199,7 +202,37 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
 
 template<typename Dtype>
 void DataTransformer<Dtype>::TransformImageAndDenseLabel(const Datum& datum,
-    Blob<Dtype>* transformed_image, Blob<Dtype>* transformed_label) {
+    Blob<Dtype> *transformed_image,
+    Blob<Dtype>* transformed_label) {
+  // If datum is encoded, decoded and transform the cv::image.
+  if (datum.encoded()) {
+#ifdef USE_OPENCV
+    CHECK(!(param_.force_color() && param_.force_gray()))
+        << "cannot set both force_color and force_gray";
+    cv::Mat cv_img;
+    if (param_.force_color() || param_.force_gray()) {
+    // If force_color then decode in color otherwise decode in gray.
+      cv_img = DecodeDatumToCVMat(datum, param_.force_color());
+    } else {
+      cv_img = DecodeDatumToCVMatNative(datum);
+    }
+    // Transform the cv::image into blob.
+    return TransformImageAndDenseLabel(datum, cv_img, transformed_image, transformed_label);
+#else
+    LOG(FATAL) << "Encoded datum requires OpenCV; compile with USE_OPENCV.";
+#endif  // USE_OPENCV
+  } else {
+    if (param_.force_color() || param_.force_gray()) {
+      LOG(ERROR) << "force_color and force_gray only for encoded datum";
+    }
+  }
+  LOG(ERROR)<<"Not implemented when datum image is not encoded";
+}
+
+template<typename Dtype>
+void DataTransformer<Dtype>::TransformImageAndDenseLabel(const Datum& datum,
+    vector<shared_ptr<Blob<Dtype> > > &transformed_image,
+    Blob<Dtype>* transformed_label) {
   // If datum is encoded, decoded and transform the cv::image.
   if (datum.encoded()) {
 #ifdef USE_OPENCV
@@ -369,12 +402,13 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 }
 
 template<typename Dtype>
-void DataTransformer<Dtype>::TransformImageAndDenseLabel(const Datum& datum, const cv::Mat& cv_img,
-    Blob<Dtype>* transformed_image, Blob<Dtype>* transformed_label) {
+void DataTransformer<Dtype>::TransformImageAndDenseLabel(const Datum& datum,
+    const cv::Mat& cv_img, Blob<Dtype>* transformed_image,
+    Blob<Dtype>* transformed_label) {
   const int crop_size = param_.crop_size();
   int crop_height = param_.crop_height();
   int crop_width = param_.crop_width();
-  if(crop_size > 0) {
+  if (crop_size > 0) {
     crop_height = crop_size;
     crop_width = crop_size;
   }
@@ -414,7 +448,7 @@ void DataTransformer<Dtype>::TransformImageAndDenseLabel(const Datum& datum, con
   }
   if (has_mean_values) {
     CHECK(mean_values_.size() == 1 || mean_values_.size() == img_channels) <<
-     "Specify either 1 mean_value or as many as channels: " << img_channels;
+    "Specify either 1 mean_value or as many as channels: " << img_channels;
     if (img_channels > 1 && mean_values_.size() == 1) {
       // Replicate the mean_value for simplicity
       for (int c = 1; c < img_channels; ++c) {
@@ -451,42 +485,311 @@ void DataTransformer<Dtype>::TransformImageAndDenseLabel(const Datum& datum, con
   if (transformed_label) {
     transformed_label_data = transformed_label->mutable_cpu_data();
   }
+
   int top_index, top_label_index;
   for (int h = 0; h < height; ++h) {
     const uchar* ptr = cv_cropped_img.ptr<uchar>(h);
     int img_index = 0;
     for (int w = 0; w < width; ++w) {
+      if (do_mirror) {
+        top_label_index = h * width + (width - 1 - w);
+      } else {
+        top_label_index = h * width + w;
+      }
+      int label_index = (h_off + h) * img_width + w_off + w;
+      CHECK_GT(datum.labels_size(), label_index);
+      transformed_label_data[top_label_index] = datum.labels(label_index);
+
       for (int c = 0; c < img_channels; ++c) {
+        int data_index = (c * img_height + h_off + h) * img_width + w_off + w;
         if (do_mirror) {
           top_index = (c * height + h) * width + (width - 1 - w);
-          top_label_index = h * width + (width - 1 - w);
+
         } else {
           top_index = (c * height + h) * width + w;
-          top_label_index = h * width + w;
         }
-        // int top_index = (c * height + h) * width + w;
         Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
         if (has_mean_file) {
-          int mean_index = (c * img_height + h_off + h) * img_width + w_off + w;
           transformed_image_data[top_index] =
-            (pixel - mean[mean_index]) * scale;
+            (pixel - mean[data_index]) * scale;
         } else {
           if (has_mean_values) {
             transformed_image_data[top_index] =
-              (pixel - mean_values_[c]) * scale;
+            (pixel - mean_values_[c]) * scale;
           } else {
             transformed_image_data[top_index] = pixel * scale;
           }
-        }
-        if (transformed_label) {
-          int label_index = (h_off + h) * img_width + w_off + w;
-          CHECK_GT(datum.labels_size(), label_index);
-          transformed_label_data[top_label_index] = datum.labels(label_index);
         }
       }
     }
   }
 }
+
+template<typename Dtype>
+void DataTransformer<Dtype>::TransformImageAndDenseLabel(const Datum& datum, const cv::Mat& cv_img,
+    vector<shared_ptr<Blob<Dtype> > > &transformed_image, Blob<Dtype>* transformed_label) {
+  const int crop_size = param_.crop_size();
+  int crop_height = param_.crop_height();
+  int crop_width = param_.crop_width();
+  if (crop_size > 0) {
+    crop_height = crop_size;
+    crop_width = crop_size;
+  }
+
+  const int img_channels = cv_img.channels();
+  const int img_height = cv_img.rows;
+  const int img_width = cv_img.cols;
+
+  // Check dimensions.
+  const int channels = transformed_image[0]->channels();
+  const int height = transformed_image[0]->height();
+  const int width = transformed_image[0]->width();
+  const int num = transformed_image[0]->num();
+
+  CHECK_EQ(channels, img_channels);
+  CHECK_LE(height, img_height);
+  CHECK_LE(width, img_width);
+  CHECK_GE(num, 1);
+
+  CHECK(cv_img.depth() == CV_8U) << "Image data type must be unsigned byte";
+
+  const Dtype scale = param_.scale();
+  const bool do_mirror = param_.mirror() && Rand(2);
+  const bool has_mean_file = param_.has_mean_file();
+  const bool has_mean_values = mean_values_.size() > 0;
+
+  CHECK_GT(img_channels, 0);
+  CHECK_GE(img_height, crop_size);
+  CHECK_GE(img_width, crop_size);
+
+  Dtype* mean = NULL;
+  if (has_mean_file) {
+    CHECK_EQ(img_channels, data_mean_.channels());
+    CHECK_EQ(img_height, data_mean_.height());
+    CHECK_EQ(img_width, data_mean_.width());
+    mean = data_mean_.mutable_cpu_data();
+  }
+  if (has_mean_values) {
+    CHECK(mean_values_.size() == 1 || mean_values_.size() == img_channels) <<
+    "Specify either 1 mean_value or as many as channels: " << img_channels;
+    if (img_channels > 1 && mean_values_.size() == 1) {
+      // Replicate the mean_value for simplicity
+      for (int c = 1; c < img_channels; ++c) {
+        mean_values_.push_back(mean_values_[0]);
+      }
+    }
+  }
+
+  int h_off = 0;
+  int w_off = 0;
+  cv::Mat cv_cropped_img = cv_img;
+  if (crop_height > 0 && crop_width > 0) {
+    CHECK_EQ(crop_height, height);
+    CHECK_EQ(crop_width, width);
+    // We only do random crop when we do training.
+    if (phase_ == TRAIN) {
+      h_off = Rand(img_height - crop_height + 1);
+      w_off = Rand(img_width - crop_width + 1);
+    } else {
+      h_off = (img_height - crop_height) / 2;
+      w_off = (img_width - crop_width) / 2;
+    }
+    cv::Rect roi(w_off, h_off, crop_width, crop_height);
+    cv_cropped_img = cv_img(roi);
+  } else {
+    CHECK_EQ(img_height, height);
+    CHECK_EQ(img_width, width);
+  }
+
+  CHECK(cv_cropped_img.data);
+
+//  Dtype* transformed_image_data = transformed_image->mutable_cpu_data();
+  Dtype* transformed_label_data = NULL;
+  if (transformed_label) {
+    transformed_label_data = transformed_label->mutable_cpu_data();
+  }
+
+  int num_scale = transformed_image.size();
+  for (int s = 0; s < num_scale; ++s) {
+    Dtype *transformed_image_data = transformed_image[s]->mutable_cpu_data();
+    int scale_height = transformed_image[s]->height();
+    int scale_width = transformed_image[s]->width();
+
+    cv::Mat scale_cv_cropped_img;
+    cv::Size size(scale_width, scale_height);
+    resize(cv_cropped_img, scale_cv_cropped_img, size);
+
+    int top_index;
+    for (int h = 0; h < scale_height; ++h) {
+      const uchar* ptr = scale_cv_cropped_img.ptr<uchar>(h);
+      int img_index = 0;
+      for (int w = 0; w < scale_width; ++w) {
+        for (int c = 0; c < img_channels; ++c) {
+          if (do_mirror) {
+            top_index = (c * scale_height + h) * scale_width
+                + (scale_width - 1 - w);
+          } else {
+            top_index = (c * scale_height + h) * scale_width + w;
+          }
+          // int top_index = (c * height + h) * width + w;
+          Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
+          if (has_mean_file) {
+            LOG(FATAL)<<"Not implemented";
+          } else {
+            if (has_mean_values) {
+              transformed_image_data[top_index] =
+              (pixel - mean_values_[c]) * scale;
+            } else {
+              transformed_image_data[top_index] = pixel * scale;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // file in label data separately
+  int top_label_index;
+  if (transformed_label) {
+    for (int h = 0; h < height; ++h) {
+      for (int w = 0; w < width; ++w) {
+        if (do_mirror) {
+          top_label_index = h * width + (width - 1 - w);
+        } else {
+          top_label_index = h * width + w;
+        }
+        int label_index = (h_off + h) * img_width + w_off + w;
+        CHECK_GT(datum.labels_size(), label_index);
+        transformed_label_data[top_label_index] = datum.labels(label_index);
+      }
+    }
+  }
+}
+
+template<typename Dtype>
+void DataTransformer<Dtype>::TransformImageAndDenseLabel(
+    const cv::Mat& cv_img_data, const cv::Mat& cv_img_label,
+    Blob<Dtype>* transformed_image, Blob<Dtype>* transformed_label) {
+  const int crop_size = param_.crop_size();
+  int crop_height = param_.crop_height();
+  int crop_width = param_.crop_width();
+  if (crop_size > 0) {
+    crop_height = crop_size;
+    crop_width = crop_size;
+  }
+
+  const int img_channels = cv_img_data.channels();
+  const int img_height = cv_img_data.rows;
+  const int img_width = cv_img_data.cols;
+
+  // Check dimensions.
+  const int channels = transformed_image->channels();
+  const int height = transformed_image->height();
+  const int width = transformed_image->width();
+  const int num = transformed_image->num();
+
+  CHECK_EQ(channels, img_channels);
+  CHECK_LE(height, img_height);
+  CHECK_LE(width, img_width);
+  CHECK_GE(num, 1);
+
+  CHECK(cv_img_data.depth() == CV_8U) << "Image data type must be unsigned byte";
+
+  const Dtype scale = param_.scale();
+  const bool do_mirror = param_.mirror() && Rand(2);
+  const bool has_mean_file = param_.has_mean_file();
+  const bool has_mean_values = mean_values_.size() > 0;
+
+  CHECK_GT(img_channels, 0);
+  CHECK_GE(img_height, crop_size);
+  CHECK_GE(img_width, crop_size);
+
+  Dtype* mean = NULL;
+  if (has_mean_file) {
+    CHECK_EQ(img_channels, data_mean_.channels());
+    CHECK_EQ(img_height, data_mean_.height());
+    CHECK_EQ(img_width, data_mean_.width());
+    mean = data_mean_.mutable_cpu_data();
+  }
+  if (has_mean_values) {
+    CHECK(mean_values_.size() == 1 || mean_values_.size() == img_channels) <<
+    "Specify either 1 mean_value or as many as channels: " << img_channels;
+    if (img_channels > 1 && mean_values_.size() == 1) {
+      // Replicate the mean_value for simplicity
+      for (int c = 1; c < img_channels; ++c) {
+        mean_values_.push_back(mean_values_[0]);
+      }
+    }
+  }
+
+  int h_off = 0;
+  int w_off = 0;
+  cv::Mat cv_cropped_img = cv_img_data;
+  cv::Mat cv_cropped_label = cv_img_label;
+  if (crop_height > 0 && crop_width > 0) {
+    CHECK_EQ(crop_height, height);
+    CHECK_EQ(crop_width, width);
+    // We only do random crop when we do training.
+    if (phase_ == TRAIN) {
+      h_off = Rand(img_height - crop_height + 1);
+      w_off = Rand(img_width - crop_width + 1);
+    } else {
+      h_off = (img_height - crop_height) / 2;
+      w_off = (img_width - crop_width) / 2;
+    }
+    cv::Rect roi(w_off, h_off, crop_width, crop_height);
+    cv_cropped_img = cv_img_data(roi);
+    cv_cropped_label = cv_img_label(roi);
+  } else {
+    CHECK_EQ(img_height, height);
+    CHECK_EQ(img_width, width);
+  }
+
+  CHECK(cv_cropped_img.data);
+  CHECK(cv_cropped_label.data);
+
+  Dtype* transformed_image_data = transformed_image->mutable_cpu_data();
+  Dtype* transformed_label_data =
+      transformed_label_data = transformed_label->mutable_cpu_data();
+
+  int top_index, top_label_index;
+  for (int h = 0; h < height; ++h) {
+    const uchar* ptr_data = cv_cropped_img.ptr<uchar>(h);
+    const uchar* ptr_label = cv_cropped_label.ptr<uchar>(h);
+    int img_index = 0, label_index = 0;
+    for (int w = 0; w < width; ++w) {
+      if (do_mirror) {
+        top_label_index = h * width + (width - 1 - w);
+      } else {
+        top_label_index = h * width + w;
+      }
+      transformed_label_data[top_label_index] = ptr_label[label_index++];
+
+      for (int c = 0; c < img_channels; ++c) {
+        int data_index = (c * img_height + h_off + h) * img_width + w_off + w;
+        if (do_mirror) {
+          top_index = (c * height + h) * width + (width - 1 - w);
+
+        } else {
+          top_index = (c * height + h) * width + w;
+        }
+        Dtype pixel = static_cast<Dtype>(ptr_data[img_index++]);
+        if (has_mean_file) {
+          transformed_image_data[top_index] =
+            (pixel - mean[data_index]) * scale;
+        } else {
+          if (has_mean_values) {
+            transformed_image_data[top_index] =
+            (pixel - mean_values_[c]) * scale;
+          } else {
+            transformed_image_data[top_index] = pixel * scale;
+          }
+        }
+      }
+    }
+  }
+}
+
 #endif  // USE_OPENCV
 
 template<typename Dtype>
