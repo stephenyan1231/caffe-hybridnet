@@ -629,11 +629,11 @@ message DenseCRFMeanfieldParameter {
   optional Mode compatibility_mode = 1 [default = POTTS];
   optional float threshold = 2;
   
-  required float theta_alpha = 3 [default = 10.];
-  required float theta_beta = 4 [default = 10.];
-  required float theta_gamma = 5 [default = 10.];
+  optional float theta_alpha = 3 [default = 80.];
+  optional float theta_beta = 4 [default = 3.];
+  optional float theta_gamma = 5 [default = 3.];
   
-  required uint32 num_iterations = 6 [default = 2];
+  optional uint32 num_iterations = 6 [default = 2];
   optional float spatial_filter_weight = 7 [default = 3];
   optional float bilateral_filter_weight = 8 [default = 5];
   
